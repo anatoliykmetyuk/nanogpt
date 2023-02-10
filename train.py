@@ -9,6 +9,7 @@ torch.manual_seed(1337)
 batch_size = 32
 block_size = 8
 max_iters = 3000
+eval_interval = 200
 learning_rate = 1e-2
 device = 'cuda' if torch.cuda.is_available() else 'cpu'
 eval_iters = 200
@@ -38,7 +39,7 @@ def get_batch(split):
   ix = torch.randint(len(data) - block_size, (batch_size, ))
   x = torch.stack([data[i:i+block_size] for i in ix])
   y = torch.stack([data[i+1:i+block_size+1] for i in ix])
-  return x, y
+  return x.to(device), y.to(device)
 
 # Language Model
 class BigramLanguageModel(nn.Module):
@@ -75,6 +76,7 @@ class BigramLanguageModel(nn.Module):
 
 # Training
 m = BigramLanguageModel(vocab_size)
+m.to(device)
 optimizer = torch.optim.AdamW(m.parameters(), lr=learning_rate)
 for steps in range(max_iters):
   # Sample data
@@ -87,5 +89,5 @@ for steps in range(max_iters):
   optimizer.step()
 print(loss.item())
 
-print(decode(m.generate(torch.zeros((1, 1), dtype=torch.long),
-      max_new_tokens=300)[0].tolist()))
+context = torch.zeros((1, 1), dtype=torch.long, device=device)
+print(decode(m.generate(context, max_new_tokens=300)[0].tolist()))

@@ -10,7 +10,11 @@
       "group": {
         "kind": "build",
         "isDefault": true
-      }
+      },
+      // Clear the console before running the task
+      "presentation": {
+        "clear": true
+      },
     }
   ]
 }
