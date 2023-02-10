@@ -41,6 +41,20 @@ def get_batch(split):
   y = torch.stack([data[i+1:i+block_size+1] for i in ix])
   return x.to(device), y.to(device)
 
+@torch.no_grad()
+def estimate_loss():
+  out = {}
+  m.eval()
+  for split in ['train', 'val']:
+    losses = torch.zeros(eval_iters)
+    for i in range(eval_iters):
+      xb, yb = get_batch(split)
+      _, loss = m(xb, yb)
+      losses[i] = loss.item()
+    out[split] = losses.mean()
+  m.train()
+  return out
+
 # Language Model
 class BigramLanguageModel(nn.Module):
   def __init__(self, vocab_size):
@@ -75,12 +89,16 @@ class BigramLanguageModel(nn.Module):
     return idx
 
 # Training
-m = BigramLanguageModel(vocab_size)
-m.to(device)
+m = BigramLanguageModel(vocab_size).to(device)
 optimizer = torch.optim.AdamW(m.parameters(), lr=learning_rate)
 for steps in range(max_iters):
   # Sample data
   xb, yb = get_batch('train')
+
+  # Every once in a while evaluate the loss on the validation set
+  if steps % eval_interval == 0:
+    losses = estimate_loss()
+    print(f'[{steps}] train_loss: {losses["train"]:.4f} val_loss: {losses["val"]:.4f}')
 
   # Evaluate the loss funcwtion
   logits, loss = m(xb, yb)
@@ -90,4 +108,4 @@ for steps in range(max_iters):
 print(loss.item())
 
 context = torch.zeros((1, 1), dtype=torch.long, device=device)
-print(decode(m.generate(context, max_new_tokens=300)[0].tolist()))
+print(decode(m.generate(context, max_new_tokens=500)[0].tolist()))
